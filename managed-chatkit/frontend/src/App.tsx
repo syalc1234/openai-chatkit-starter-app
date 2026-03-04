@@ -5,9 +5,9 @@ import {
 } from "./components/ChatKitPanel";
 import {
   connectRealtimeVoiceSession,
-  requestVoiceProfileSummary,
   type VoiceTranscriptItem,
 } from "./lib/realtimeVoiceAgent";
+import { createProfileSummary } from "./lib/profileSummary";
 
 type SetupCounterOptions = {
   onStatus?: (message: string) => void;
@@ -85,11 +85,12 @@ export default function App() {
 
     setSummaryError(null);
     setIsGeneratingSummary(true);
+    setSummaryStatus("Generating profile summary...");
 
     try {
-      const summary = await requestVoiceProfileSummary({
+      const summary = await createProfileSummary({
         propertyUrl: trimmedPropertyUrl,
-        onStatus: setSummaryStatus,
+        transcript: voiceHistory,
       });
 
       await chatComposerControl.setComposerValue({ text: summary });
@@ -109,13 +110,6 @@ export default function App() {
     { label: "Estimated Value Range", value: "$742k - $781k" },
     { label: "Confidence Score", value: "86 / 100" },
     { label: "Active Comparables", value: "12 listings" },
-  ];
-
-  const checklist = [
-    "Share your ideal neighborhoods, commute tolerance, and price ceiling.",
-    "Tell the agent your must-haves (beds, baths, yard, schools, parking).",
-    "Ask for side-by-side comparisons before making a shortlist.",
-    "Request tradeoffs: value upside vs. move-in readiness.",
   ];
 
   return (
@@ -242,25 +236,6 @@ export default function App() {
               </div>
             </section>
 
-            <section className="panel-card fade-in-up p-5 sm:p-6">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Best Results Checklist
-              </h2>
-              <div className="mt-4 space-y-2">
-                {checklist.map((item, index) => (
-                  <div
-                    key={item}
-                    className="fade-in-up flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--muted)]"
-                    style={{ animationDelay: `${0.08 * (index + 2)}s` }}
-                  >
-                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--accent)] text-xs font-semibold text-[var(--accent)]">
-                      {index + 1}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
           </aside>
 
           <section className="fade-in-up" style={{ animationDelay: "0.2s" }}>
@@ -283,51 +258,7 @@ export default function App() {
             />
           </section>
         </div>
-
-        <section
-          className="panel-card mt-6 fade-in-up p-5 sm:p-6"
-          style={{ animationDelay: "0.3s" }}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="font-semibold text-[var(--foreground)]">Session Status</p>
-              <p className="mt-1">Connected to managed workflow</p>
-            </div>
-            <button
-              id="setup-counter"
-              type="button"
-              onClick={() => {
-                void onSetupRealtime();
-              }}
-              disabled={isSettingUpRealtime}
-              className="rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSettingUpRealtime ? "Setting up..." : "Setup Realtime Session"}
-            </button>
-          </div>
-
-          <p id="setup-counter-status" className="mt-2 text-sm text-[var(--foreground)]">
-            {realtimeStatus}
-          </p>
-          {realtimeError ? (
-            <p className="mt-2 text-sm text-red-700">{realtimeError}</p>
-          ) : null}
-
-          {transcript.length ? (
-            <div className="mt-3 max-h-44 overflow-y-auto rounded-lg border border-[var(--line)] bg-white p-3">
-              {transcript.map((item) => (
-                <p key={item.id} className="mb-1.5 text-sm leading-relaxed text-[var(--muted)]">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {item.role === "assistant" ? "Agent" : "You"}:
-                  </span>{" "}
-                  {item.text}
-                </p>
-              ))}
-            </div>
-          ) : null}
-        </section>
       </div>
-
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[380px] bg-gradient-to-b from-[var(--bg-accent)] to-transparent" />
       <div className="pointer-events-none absolute -left-24 bottom-8 -z-10 h-64 w-64 rounded-full bg-[var(--bg-orb)] blur-3xl" />
       <div className="pointer-events-none absolute -right-20 top-20 -z-10 h-72 w-72 rounded-full bg-[var(--bg-orb-secondary)] blur-3xl" />

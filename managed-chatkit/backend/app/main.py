@@ -144,6 +144,93 @@ async def create_realtime_session(request: Request) -> JSONResponse:
     )
 
 
+@app.post("/api/summarize-profile")
+async def summarize_profile(request: Request) -> JSONResponse:
+    """Summarize captured voice transcript into bullet points for chat composer."""
+    api_key = read_env("OPENAI_API_KEY")
+    if not api_key:
+        return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
+
+    body = await read_json_body(request)
+    property_url = body.get("propertyUrl")
+    if not isinstance(property_url, str) or not property_url.strip():
+        return respond({"error": "Missing propertyUrl"}, 400)
+    property_url = property_url.strip()
+
+    transcript = body.get("transcript")
+    transcript_lines: list[str] = []
+    if isinstance(transcript, list):
+        for item in transcript[:80]:
+            if not isinstance(item, Mapping):
+                continue
+
+            role = item.get("role")
+            if not isinstance(role, str) or role not in {
+                "assistant",
+                "user",
+                "system",
+            }:
+                role = "user"
+
+            text = item.get("text")
+            if not isinstance(text, str) or not text.strip():
+                continue
+
+            transcript_lines.append(f"{role}: {text.strip()}")
+
+    if not transcript_lines:
+        return respond({"error": "Transcript is empty"}, 400)
+
+    model = read_env("OPENAI_SUMMARY_MODEL") or "gpt-4.1-mini"
+    prompt = (
+        f"Property link: {property_url}\n\n"
+        "Transcript:\n"
+        + "\n".join(transcript_lines)
+        + "\n\n"
+        "Return only a concise bullet list (6-10 bullets), each line starting with '- '. "
+        "Capture profile details such as household, kids, pets, preferred location, bedrooms/bathrooms, budget cues, and constraints. "
+        "If unknown, write 'Unknown'. Do not ask any questions."
+    )
+
+    payload = {
+        "model": model,
+        "input": [
+            {
+                "role": "system",
+                "content": "You produce profile summaries for property search handoff. Output bullet points only.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    }
+
+    api_base = chatkit_api_base()
+    try:
+        async with httpx.AsyncClient(base_url=api_base, timeout=20.0) as client:
+            upstream = await client.post(
+                "/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+    except httpx.RequestError as error:
+        return respond({"error": f"Failed to reach Responses API: {error}"}, 502)
+
+    response_payload = parse_json(upstream)
+    if not upstream.is_success:
+        message = extract_error_message(
+            response_payload, "Failed to summarize profile"
+        )
+        return respond({"error": message}, upstream.status_code)
+
+    raw_summary = extract_responses_output_text(response_payload)
+    if not raw_summary:
+        return respond({"error": "Missing summary text in response"}, 502)
+
+    return respond({"summary": format_summary_bullets(raw_summary, property_url)}, 200)
+
+
 def respond(
     payload: Mapping[str, Any], status_code: int, cookie_value: str | None = None
 ) -> JSONResponse:
@@ -226,6 +313,56 @@ def extract_error_message(payload: Mapping[str, Any], fallback: str) -> str:
     if isinstance(error, str) and error:
         return error
     return fallback
+
+
+def extract_responses_output_text(payload: Mapping[str, Any]) -> str | None:
+    direct = payload.get("output_text")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()
+
+    output = payload.get("output")
+    if not isinstance(output, list):
+        return None
+
+    parts: list[str] = []
+    for item in output:
+        if not isinstance(item, Mapping):
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for content_item in content:
+            if not isinstance(content_item, Mapping):
+                continue
+            text = content_item.get("text")
+            if isinstance(text, str) and text.strip():
+                parts.append(text.strip())
+
+    if not parts:
+        return None
+
+    return "\n".join(parts).strip()
+
+
+def format_summary_bullets(summary: str, property_url: str) -> str:
+    lines = [line.strip() for line in summary.splitlines() if line.strip()]
+    if not lines:
+        lines = ["- Unknown"]
+
+    bullets: list[str] = []
+    for line in lines:
+        if line.startswith("- "):
+            bullets.append(line)
+            continue
+
+        cleaned = line.lstrip("* ").strip()
+        bullets.append(f"- {cleaned}" if cleaned else "- Unknown")
+
+    combined = "\n".join(bullets)
+    if property_url.lower() not in combined.lower():
+        bullets.insert(0, f"- Property link: {property_url}")
+
+    return "\n".join(bullets)
 
 
 def parse_json(response: httpx.Response) -> Mapping[str, Any]:

@@ -138,7 +138,7 @@ function buildAgent() {
   return new RealtimeAgent({
     name: "Property Valuation Voice Copilot",
     instructions:
-      "You are a real estate valuation assistant for licensed agents. Speak clearly and ask one question at a time. Understand what they have in mind for an ideal house. Summarise assumptions.",
+      "Prepare a profile handoff from this voice conversation for a text chat composer. Required property link: ${propertyUrl} Return plain text only. First line must be exactly: ${token} Then output 6-10 concise bullet points, each line starting with '- '.Include these topics when possible: property link, household, kids, pets, bedrooms/bathrooms, budget or valuation cues, location preferences, constraints. If an item is unknown, state 'Unknown'. Do not ask follow-up questions.",
   });
 }
 
