@@ -1,25 +1,29 @@
-@import url("https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #eef2f7;
-  --foreground: #12253a;
-  --muted: #4a5f77;
+  --background: #e8f4fb;
+  --foreground: #01172f;
+  --muted: #29546d;
   --panel: #ffffff;
-  --panel-soft: #f7fafe;
-  --line: #d6e0ec;
-  --accent: #0f5f9f;
-  --bg-accent: #d8e6f8;
-  --bg-orb: rgba(129, 165, 214, 0.34);
-  --bg-orb-secondary: rgba(189, 210, 236, 0.46);
+  --panel-soft: #eff9f9;
+  --line: #9dd7de;
+  --accent: #00635d;
+  --accent-secondary: #08a4bd;
+  --brand-ink: #4c212a;
+  --brand-royal: #446df6;
+  --chip: #d6eef8;
+  --bg-accent: #d7ecff;
+  --bg-orb: rgba(8, 164, 189, 0.28);
+  --bg-orb-secondary: rgba(68, 109, 246, 0.26);
   color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Source Sans 3", "Segoe UI", sans-serif;
-  --font-display: "Libre Baskerville", Georgia, serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-display: "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-mono: SFMono-Regular, Consolas, "Liberation Mono", monospace;
 }
 
@@ -29,7 +33,8 @@
 
 body {
   min-height: 100dvh;
-  background: linear-gradient(180deg, #f4f7fb 0%, #e9eef5 100%);
+  background: radial-gradient(circle at 20% -10%, #ffffff 0%, transparent 35%),
+    linear-gradient(180deg, #f4fbff 0%, #e7f4fb 100%);
   color: var(--foreground);
   font-family: var(--font-sans);
 }
@@ -54,7 +59,7 @@ body::after {
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: var(--panel);
-  box-shadow: 0 14px 42px rgba(26, 51, 82, 0.08);
+  box-shadow: 0 14px 38px rgba(1, 23, 47, 0.08);
 }
 
 .eyebrow {
@@ -67,7 +72,7 @@ body::after {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--brand-ink);
 }
 
 .chat-shell {
@@ -82,8 +87,8 @@ body::after {
   pointer-events: none;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.68),
-    rgba(255, 255, 255, 0.12)
+    rgba(255, 255, 255, 0.66),
+    rgba(8, 164, 189, 0.08)
   );
 }
 

@@ -17,7 +17,7 @@ export function ChatKitPanel({ className }: ChatKitPanelProps) {
   });
 
   const panelClassName = [
-    "chat-shell panel-card flex h-[70vh] min-h-[620px] w-full overflow-hidden rounded-[1.5rem] p-2 sm:p-3",
+    "chat-shell panel-card flex h-[68vh] min-h-[520px] w-full overflow-hidden rounded-[1.5rem] p-2 sm:h-[70vh] sm:min-h-[620px] sm:p-3",
     className ?? "",
   ]
     .filter(Boolean)
