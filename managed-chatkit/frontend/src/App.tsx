@@ -54,17 +54,11 @@ export default function App() {
     }
   };
 
-  const valuationSignals = [
-    { label: "Estimated Value Range", value: "$742k - $781k" },
-    { label: "Confidence Score", value: "86 / 100" },
-    { label: "Active Comparables", value: "12 listings" },
-  ];
-
   const checklist = [
-    "Confirm square footage and lot size from county records.",
-    "Validate renovation year and material quality.",
-    "Compare days-on-market against the neighborhood median.",
-    "Review school zone changes and upcoming developments.",
+    "Share your ideal neighborhoods, commute tolerance, and price ceiling.",
+    "Tell the agent your must-haves (beds, baths, yard, schools, parking).",
+    "Ask for side-by-side comparisons before making a shortlist.",
+    "Request tradeoffs: value upside vs. move-in readiness.",
   ];
 
   return (
@@ -73,51 +67,21 @@ export default function App() {
         <header className="panel-card fade-in-up p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-3xl">
-              <p className="eyebrow">CMA Workspace</p>
+              <p className="eyebrow">Real Estate Recommender</p>
               <h1 className="font-display mt-2 text-3xl leading-tight text-[var(--foreground)] sm:text-4xl lg:text-5xl">
-                Property Valuation Copilot
+                Find The Right Home Faster
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--muted)] sm:text-base">
-                Chat through comparable sales, pricing strategy, and market
-                positioning. Built for fast, client-ready valuation decisions.
+                Chat with your agent to get neighborhood-fit insights, pricing
+                comparisons, and personalized property recommendations in one place.
               </p>
             </div>
-
-            <div className="w-full max-w-md rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm text-[var(--muted)]">
-              <p className="font-semibold text-[var(--foreground)]">
-                Session Status
-              </p>
-              <p className="mt-1">Connected to managed workflow</p>
-              <button
-                id="setup-counter"
-                type="button"
-                onClick={() => {
-                  void onSetupRealtime();
-                }}
-                disabled={isSettingUpRealtime}
-                className="mt-3 rounded-lg border border-[var(--accent)] bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)] transition hover:bg-[var(--panel)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSettingUpRealtime ? "Setting up..." : "Setup Realtime Session"}
-              </button>
-              <p id="setup-counter-status" className="mt-2 text-xs text-[var(--foreground)]">
-                {realtimeStatus}
-              </p>
-              {realtimeError ? (
-                <p className="mt-2 text-xs text-red-700">{realtimeError}</p>
-              ) : null}
-
-              {transcript.length ? (
-                <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-[var(--line)] bg-white p-2">
-                  {transcript.map((item) => (
-                    <p key={item.id} className="mb-1 text-xs leading-relaxed text-[var(--muted)]">
-                      <span className="font-semibold text-[var(--foreground)]">
-                        {item.role === "assistant" ? "Assistant" : "You"}:
-                      </span>{" "}
-                      {item.text}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
+            <div className="w-full max-w-[264px] overflow-hidden rounded-xl border border-[var(--line)] bg-white">
+              <img
+                src="/HOUSE.png"
+                alt="Modern home exterior"
+                className="h-[8.4rem] w-full object-contain"
+              />
             </div>
           </div>
         </header>
@@ -126,29 +90,37 @@ export default function App() {
           <aside className="space-y-4">
             <section className="panel-card fade-in-up p-5 sm:p-6">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Valuation Snapshot
+                Start Here
               </h2>
-              <div className="mt-4 space-y-3">
-                {valuationSignals.map((signal, index) => (
-                  <div
-                    key={signal.label}
-                    className="fade-in-up rounded-xl border border-[var(--line)] bg-white px-4 py-3"
-                    style={{ animationDelay: `${0.08 * (index + 1)}s` }}
-                  >
-                    <p className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-                      {signal.label}
-                    </p>
-                    <p className="mt-1 text-xl font-semibold text-[var(--foreground)]">
-                      {signal.value}
-                    </p>
-                  </div>
-                ))}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    Step 1
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+                    Setup Voice Or Chat
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                    Start a session and describe what you want in a home.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    Step 2
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+                    Compare Recommendations
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                    Ask for neighborhood, value, and upside tradeoffs.
+                  </p>
+                </div>
               </div>
             </section>
 
             <section className="panel-card fade-in-up p-5 sm:p-6">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Review Checklist
+                Best Results Checklist
               </h2>
               <div className="mt-4 space-y-2">
                 {checklist.map((item, index) => (
@@ -168,9 +140,63 @@ export default function App() {
           </aside>
 
           <section className="fade-in-up" style={{ animationDelay: "0.2s" }}>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--foreground)]">
+                First-time buyer
+              </span>
+              <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--foreground)]">
+                20-30 min commute
+              </span>
+              <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--foreground)]">
+                Walkable area
+              </span>
+            </div>
             <ChatKitPanel className="w-full" />
           </section>
         </div>
+
+        <section
+          className="panel-card mt-6 fade-in-up p-5 sm:p-6"
+          style={{ animationDelay: "0.3s" }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold text-[var(--foreground)]">Session Status</p>
+              <p className="mt-1">Connected to managed workflow</p>
+            </div>
+            <button
+              id="setup-counter"
+              type="button"
+              onClick={() => {
+                void onSetupRealtime();
+              }}
+              disabled={isSettingUpRealtime}
+              className="rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSettingUpRealtime ? "Setting up..." : "Setup Realtime Session"}
+            </button>
+          </div>
+
+          <p id="setup-counter-status" className="mt-2 text-sm text-[var(--foreground)]">
+            {realtimeStatus}
+          </p>
+          {realtimeError ? (
+            <p className="mt-2 text-sm text-red-700">{realtimeError}</p>
+          ) : null}
+
+          {transcript.length ? (
+            <div className="mt-3 max-h-44 overflow-y-auto rounded-lg border border-[var(--line)] bg-white p-3">
+              {transcript.map((item) => (
+                <p key={item.id} className="mb-1.5 text-sm leading-relaxed text-[var(--muted)]">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {item.role === "assistant" ? "Agent" : "You"}:
+                  </span>{" "}
+                  {item.text}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[380px] bg-gradient-to-b from-[var(--bg-accent)] to-transparent" />
