@@ -15,13 +15,16 @@ What happens:
 - `npm run dev` runs the backend via `backend/scripts/run.sh` (FastAPI +
   uvicorn) and the frontend via `npm --prefix frontend run dev`.
 - The backend exposes `/api/create-session`, exchanging your workflow id and
-  `OPENAI_API_KEY` for a ChatKit client secret. The Vite dev server proxies
-  `/api/*` to `127.0.0.1:8000`.
+  `OPENAI_API_KEY` for a ChatKit client secret.
+- The backend also exposes `/api/create-realtime-session`, exchanging
+  `OPENAI_API_KEY` for a Realtime API client secret (ephemeral key).
+- The Vite dev server proxies `/api/*` to `127.0.0.1:8000`.
 
 ## Required environment
 
 - `OPENAI_API_KEY`
 - `VITE_CHATKIT_WORKFLOW_ID`
+- (optional) `OPENAI_REALTIME_MODEL` (defaults to `gpt-realtime`)
 - (optional) `CHATKIT_API_BASE` or `VITE_CHATKIT_API_BASE` (defaults to `https://api.openai.com`)
 - (optional) `VITE_API_URL` (override the dev proxy target for `/api`)
 
@@ -33,3 +36,4 @@ same project and organization.
 
 - UI: `frontend/src/components/ChatKitPanel.tsx`
 - Session logic: `backend/app/main.py`
+- Realtime voice flow: `frontend/src/lib/realtimeVoiceAgent.ts` + `setupCounter` in `frontend/src/App.tsx`

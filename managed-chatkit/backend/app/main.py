@@ -35,7 +35,7 @@ async def health() -> Mapping[str, str]:
 @app.post("/api/create-session")
 async def create_session(request: Request) -> JSONResponse:
     """Exchange a workflow id for a ChatKit client secret."""
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = read_env("OPENAI_API_KEY")
     if not api_key:
         return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
 
@@ -93,6 +93,57 @@ async def create_session(request: Request) -> JSONResponse:
     )
 
 
+@app.post("/api/create-realtime-session")
+async def create_realtime_session(request: Request) -> JSONResponse:
+    """Create a short-lived Realtime API client secret for browser use."""
+    api_key = read_env("OPENAI_API_KEY")
+    if not api_key:
+        return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
+
+    body = await read_json_body(request)
+    session_from_body = body.get("session")
+    session: Mapping[str, Any] = (
+        session_from_body if isinstance(session_from_body, Mapping) else {}
+    )
+
+    model = session.get("model")
+    if not isinstance(model, str) or not model.strip():
+        model = read_env("OPENAI_REALTIME_MODEL") or "gpt-realtime"
+
+    payload = {"session": {"type": "realtime", "model": model.strip()}}
+    api_base = chatkit_api_base()
+
+    try:
+        async with httpx.AsyncClient(base_url=api_base, timeout=10.0) as client:
+            upstream = await client.post(
+                "/v1/realtime/client_secrets",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+    except httpx.RequestError as error:
+        return respond({"error": f"Failed to reach Realtime API: {error}"}, 502)
+
+    response_payload = parse_json(upstream)
+    if not upstream.is_success:
+        message = extract_error_message(
+            response_payload, "Failed to create realtime session"
+        )
+        return respond({"error": message}, upstream.status_code)
+
+    client_secret = response_payload.get("value")
+    expires_at = response_payload.get("expires_at")
+    if not isinstance(client_secret, str) or not client_secret:
+        return respond({"error": "Missing client secret in response"}, 502)
+
+    return respond(
+        {"client_secret": client_secret, "expires_at": expires_at},
+        200,
+    )
+
+
 def respond(
     payload: Mapping[str, Any], status_code: int, cookie_value: str | None = None
 ) -> JSONResponse:
@@ -132,7 +183,7 @@ def resolve_workflow_id(body: Mapping[str, Any]) -> str | None:
     if isinstance(workflow, Mapping):
         workflow_id = workflow.get("id")
     workflow_id = workflow_id or body.get("workflowId")
-    env_workflow = os.getenv("CHATKIT_WORKFLOW_ID") or os.getenv(
+    env_workflow = read_env("CHATKIT_WORKFLOW_ID") or read_env(
         "VITE_CHATKIT_WORKFLOW_ID"
     )
     if not workflow_id and env_workflow:
@@ -152,10 +203,29 @@ def resolve_user(cookies: Mapping[str, str]) -> tuple[str, str | None]:
 
 def chatkit_api_base() -> str:
     return (
-        os.getenv("CHATKIT_API_BASE")
-        or os.getenv("VITE_CHATKIT_API_BASE")
+        read_env("CHATKIT_API_BASE")
+        or read_env("VITE_CHATKIT_API_BASE")
         or DEFAULT_CHATKIT_BASE
     )
+
+
+def read_env(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def extract_error_message(payload: Mapping[str, Any], fallback: str) -> str:
+    error = payload.get("error")
+    if isinstance(error, Mapping):
+        message = error.get("message")
+        if isinstance(message, str) and message:
+            return message
+    if isinstance(error, str) and error:
+        return error
+    return fallback
 
 
 def parse_json(response: httpx.Response) -> Mapping[str, Any]:

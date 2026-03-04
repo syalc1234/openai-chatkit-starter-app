@@ -1,11 +1,181 @@
+import { useState } from "react";
 import { ChatKitPanel } from "./components/ChatKitPanel";
+import {
+  connectRealtimeVoiceSession,
+  type VoiceTranscriptItem,
+} from "./lib/realtimeVoiceAgent";
+
+type SetupCounterOptions = {
+  onStatus?: (message: string) => void;
+  onError?: (message: string) => void;
+  onConnected?: (expiresAt?: number) => void;
+  onHistory?: (items: VoiceTranscriptItem[]) => void;
+};
+
+export async function setupCounter(options: SetupCounterOptions = {}) {
+  return connectRealtimeVoiceSession(options);
+}
 
 export default function App() {
+  const [isSettingUpRealtime, setIsSettingUpRealtime] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>(
+    "Click setup to start live voice conversation."
+  );
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<VoiceTranscriptItem[]>([]);
+
+  const onSetupRealtime = async () => {
+    setIsSettingUpRealtime(true);
+    setRealtimeError(null);
+
+    try {
+      await setupCounter({
+        onStatus: setRealtimeStatus,
+        onError: setRealtimeError,
+        onConnected: (expiresAt) => {
+          if (!expiresAt) return;
+          setRealtimeStatus(
+            `Live voice session ready. Expires at ${new Date(
+              expiresAt * 1000
+            ).toLocaleTimeString()}.`
+          );
+        },
+        onHistory: (items) => {
+          setTranscript(items.slice(-8));
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create realtime session";
+      setRealtimeError(message);
+      setRealtimeStatus("Unable to start live voice session.");
+    } finally {
+      setIsSettingUpRealtime(false);
+    }
+  };
+
+  const valuationSignals = [
+    { label: "Estimated Value Range", value: "$742k - $781k" },
+    { label: "Confidence Score", value: "86 / 100" },
+    { label: "Active Comparables", value: "12 listings" },
+  ];
+
+  const checklist = [
+    "Confirm square footage and lot size from county records.",
+    "Validate renovation year and material quality.",
+    "Compare days-on-market against the neighborhood median.",
+    "Review school zone changes and upcoming developments.",
+  ];
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-end bg-slate-100 dark:bg-slate-950">
-      <div className="mx-auto w-full max-w-5xl">
-        <ChatKitPanel />
+    <main className="relative min-h-screen px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+      <div className="mx-auto w-full max-w-7xl">
+        <header className="panel-card fade-in-up p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-3xl">
+              <p className="eyebrow">CMA Workspace</p>
+              <h1 className="font-display mt-2 text-3xl leading-tight text-[var(--foreground)] sm:text-4xl lg:text-5xl">
+                Property Valuation Copilot
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--muted)] sm:text-base">
+                Chat through comparable sales, pricing strategy, and market
+                positioning. Built for fast, client-ready valuation decisions.
+              </p>
+            </div>
+
+            <div className="w-full max-w-md rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm text-[var(--muted)]">
+              <p className="font-semibold text-[var(--foreground)]">
+                Session Status
+              </p>
+              <p className="mt-1">Connected to managed workflow</p>
+              <button
+                id="setup-counter"
+                type="button"
+                onClick={() => {
+                  void onSetupRealtime();
+                }}
+                disabled={isSettingUpRealtime}
+                className="mt-3 rounded-lg border border-[var(--accent)] bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--accent)] transition hover:bg-[var(--panel)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSettingUpRealtime ? "Setting up..." : "Setup Realtime Session"}
+              </button>
+              <p id="setup-counter-status" className="mt-2 text-xs text-[var(--foreground)]">
+                {realtimeStatus}
+              </p>
+              {realtimeError ? (
+                <p className="mt-2 text-xs text-red-700">{realtimeError}</p>
+              ) : null}
+
+              {transcript.length ? (
+                <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-[var(--line)] bg-white p-2">
+                  {transcript.map((item) => (
+                    <p key={item.id} className="mb-1 text-xs leading-relaxed text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        {item.role === "assistant" ? "Assistant" : "You"}:
+                      </span>{" "}
+                      {item.text}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </header>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
+          <aside className="space-y-4">
+            <section className="panel-card fade-in-up p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Valuation Snapshot
+              </h2>
+              <div className="mt-4 space-y-3">
+                {valuationSignals.map((signal, index) => (
+                  <div
+                    key={signal.label}
+                    className="fade-in-up rounded-xl border border-[var(--line)] bg-white px-4 py-3"
+                    style={{ animationDelay: `${0.08 * (index + 1)}s` }}
+                  >
+                    <p className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                      {signal.label}
+                    </p>
+                    <p className="mt-1 text-xl font-semibold text-[var(--foreground)]">
+                      {signal.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="panel-card fade-in-up p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Review Checklist
+              </h2>
+              <div className="mt-4 space-y-2">
+                {checklist.map((item, index) => (
+                  <div
+                    key={item}
+                    className="fade-in-up flex gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--muted)]"
+                    style={{ animationDelay: `${0.08 * (index + 2)}s` }}
+                  >
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--accent)] text-xs font-semibold text-[var(--accent)]">
+                      {index + 1}
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </aside>
+
+          <section className="fade-in-up" style={{ animationDelay: "0.2s" }}>
+            <ChatKitPanel className="w-full" />
+          </section>
+        </div>
       </div>
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[380px] bg-gradient-to-b from-[var(--bg-accent)] to-transparent" />
+      <div className="pointer-events-none absolute -left-24 bottom-8 -z-10 h-64 w-64 rounded-full bg-[var(--bg-orb)] blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 top-20 -z-10 h-72 w-72 rounded-full bg-[var(--bg-orb-secondary)] blur-3xl" />
     </main>
   );
 }
