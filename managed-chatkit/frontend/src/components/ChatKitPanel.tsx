@@ -1,12 +1,18 @@
-import { useMemo } from "react";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { useEffect, useMemo } from "react";
+import { ChatKit, useChatKit, type UseChatKitReturn } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
+
+export type ChatKitComposerControl = Pick<
+  UseChatKitReturn,
+  "setComposerValue" | "focusComposer"
+>;
 
 type ChatKitPanelProps = {
   className?: string;
+  onReady?: (control: ChatKitComposerControl) => void;
 };
 
-export function ChatKitPanel({ className }: ChatKitPanelProps) {
+export function ChatKitPanel({ className, onReady }: ChatKitPanelProps) {
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
     []
@@ -15,6 +21,18 @@ export function ChatKitPanel({ className }: ChatKitPanelProps) {
   const chatkit = useChatKit({
     api: { getClientSecret },
   });
+
+  const composerControl = useMemo(
+    () => ({
+      setComposerValue: chatkit.setComposerValue,
+      focusComposer: chatkit.focusComposer,
+    }),
+    [chatkit.focusComposer, chatkit.setComposerValue]
+  );
+
+  useEffect(() => {
+    onReady?.(composerControl);
+  }, [composerControl, onReady]);
 
   const panelClassName = [
     "chat-shell panel-card flex h-[70vh] min-h-[620px] w-full overflow-hidden rounded-[1.5rem] p-2 sm:p-3",

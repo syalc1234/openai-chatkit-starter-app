@@ -16,6 +16,12 @@ type SetupRealtimeOptions = {
 
 let activeSession: RealtimeSession | null = null;
 
+type RequestVoiceProfileSummaryOptions = {
+  propertyUrl: string;
+  timeoutMs?: number;
+  onStatus?: (message: string) => void;
+};
+
 function readTextFromContent(content: unknown): string {
   if (!Array.isArray(content)) return "";
 
@@ -65,6 +71,67 @@ function normalizeHistory(history: unknown): VoiceTranscriptItem[] {
   }
 
   return normalized;
+}
+
+function createSummaryPrompt(token: string, propertyUrl: string): string {
+  return [
+    "Prepare a profile handoff from this voice conversation for a text chat composer.",
+    `Required property link: ${propertyUrl}`,
+    `Return plain text only. First line must be exactly: ${token}`,
+    "Then output 6-10 concise bullet points, each line starting with '- '.",
+    "Include these topics when possible: property link, household, kids, pets, bedrooms/bathrooms, budget or valuation cues, location preferences, constraints.",
+    "If an item is unknown, state 'Unknown'.",
+    "Do not ask follow-up questions.",
+  ].join("\n");
+}
+
+function formatSummaryForComposer(text: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const bulletLines = lines.filter((line) => line.startsWith("- "));
+  if (bulletLines.length >= 2) {
+    return bulletLines.join("\n");
+  }
+
+  const inlineBullets = text
+    .split(/\s(?=-\s)/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => (line.startsWith("- ") ? line : `- ${line}`));
+
+  if (inlineBullets.length >= 2) {
+    return inlineBullets.join("\n");
+  }
+
+  return `- ${text.trim()}`;
+}
+
+function ensurePropertyLinkBullet(summary: string, propertyUrl: string): string {
+  if (summary.toLowerCase().includes(propertyUrl.toLowerCase())) {
+    return summary;
+  }
+
+  return `- Property link: ${propertyUrl}\n${summary}`;
+}
+
+function extractTokenizedAssistantMessage(
+  history: unknown,
+  token: string
+): string | null {
+  const items = normalizeHistory(history);
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item.role !== "assistant") continue;
+    if (!item.text.includes(token)) continue;
+
+    const stripped = item.text.replace(token, "").trim();
+    return stripped || null;
+  }
+
+  return null;
 }
 
 function buildAgent() {
@@ -118,4 +185,61 @@ export async function connectRealtimeVoiceSession(
     options.onError?.(message);
     throw error;
   }
+}
+
+export async function requestVoiceProfileSummary(
+  options: RequestVoiceProfileSummaryOptions
+): Promise<string> {
+  if (!activeSession) {
+    throw new Error("Voice session is not connected yet.");
+  }
+
+  const propertyUrl = options.propertyUrl.trim();
+  if (!propertyUrl) {
+    throw new Error("Missing property link.");
+  }
+
+  const token = `[[PROFILE_SUMMARY_${Math.random().toString(36).slice(2, 10)}]]`;
+  const timeoutMs = options.timeoutMs ?? 20_000;
+
+  options.onStatus?.("Requesting bullet profile summary from voice session...");
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      activeSession?.off("history_updated", onHistoryUpdated);
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    };
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+
+    const onHistoryUpdated = (history: unknown) => {
+      const tokenizedText = extractTokenizedAssistantMessage(history, token);
+      if (!tokenizedText) return;
+
+      const formatted = ensurePropertyLinkBullet(
+        formatSummaryForComposer(tokenizedText),
+        propertyUrl
+      );
+      settle(() => resolve(formatted));
+    };
+
+    timeoutHandle = setTimeout(() => {
+      settle(() =>
+        reject(new Error("Timed out waiting for profile summary. Please retry."))
+      );
+    }, timeoutMs);
+
+    activeSession?.on("history_updated", onHistoryUpdated);
+    activeSession?.sendMessage(createSummaryPrompt(token, propertyUrl));
+  });
 }

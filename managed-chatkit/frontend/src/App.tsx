@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { ChatKitPanel } from "./components/ChatKitPanel";
+import {
+  ChatKitPanel,
+  type ChatKitComposerControl,
+} from "./components/ChatKitPanel";
 import {
   connectRealtimeVoiceSession,
+  requestVoiceProfileSummary,
   type VoiceTranscriptItem,
 } from "./lib/realtimeVoiceAgent";
 
@@ -23,6 +27,15 @@ export default function App() {
   );
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<VoiceTranscriptItem[]>([]);
+  const [voiceHistory, setVoiceHistory] = useState<VoiceTranscriptItem[]>([]);
+  const [propertyUrl, setPropertyUrl] = useState("");
+  const [summaryStatus, setSummaryStatus] = useState(
+    "Paste a property link, then generate profile summary."
+  );
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [chatComposerControl, setChatComposerControl] =
+    useState<ChatKitComposerControl | null>(null);
 
   const onSetupRealtime = async () => {
     setIsSettingUpRealtime(true);
@@ -41,6 +54,7 @@ export default function App() {
           );
         },
         onHistory: (items) => {
+          setVoiceHistory(items);
           setTranscript(items.slice(-8));
         },
       });
@@ -51,6 +65,43 @@ export default function App() {
       setRealtimeStatus("Unable to start live voice session.");
     } finally {
       setIsSettingUpRealtime(false);
+    }
+  };
+
+  const onGenerateSummary = async () => {
+    const trimmedPropertyUrl = propertyUrl.trim();
+    if (!trimmedPropertyUrl) {
+      setSummaryError("Paste a property link before generating summary.");
+      return;
+    }
+    if (!voiceHistory.length) {
+      setSummaryError("No voice interview content yet. Start a realtime session first.");
+      return;
+    }
+    if (!chatComposerControl) {
+      setSummaryError("Chat composer is not ready yet. Please retry.");
+      return;
+    }
+
+    setSummaryError(null);
+    setIsGeneratingSummary(true);
+
+    try {
+      const summary = await requestVoiceProfileSummary({
+        propertyUrl: trimmedPropertyUrl,
+        onStatus: setSummaryStatus,
+      });
+
+      await chatComposerControl.setComposerValue({ text: summary });
+      await chatComposerControl.focusComposer();
+      setSummaryStatus("Summary drafted in chat composer.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to generate profile summary";
+      setSummaryError(message);
+      setSummaryStatus("Unable to generate summary.");
+    } finally {
+      setIsGeneratingSummary(false);
     }
   };
 
@@ -105,6 +156,36 @@ export default function App() {
               {realtimeError ? (
                 <p className="mt-2 text-xs text-red-700">{realtimeError}</p>
               ) : null}
+
+              <div className="mt-4 rounded-lg border border-[var(--line)] bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--foreground)]">
+                  Property Link
+                </p>
+                <input
+                  type="url"
+                  value={propertyUrl}
+                  onChange={(event) => {
+                    setPropertyUrl(event.target.value);
+                    if (summaryError) setSummaryError(null);
+                  }}
+                  placeholder="https://property-listing-url"
+                  className="mt-2 w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-xs text-[var(--foreground)] outline-none ring-[var(--accent)] transition focus:ring-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void onGenerateSummary();
+                  }}
+                  disabled={isGeneratingSummary}
+                  className="mt-3 rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isGeneratingSummary ? "Generating..." : "Generate Profile Summary"}
+                </button>
+                <p className="mt-2 text-xs text-[var(--foreground)]">{summaryStatus}</p>
+                {summaryError ? (
+                  <p className="mt-2 text-xs text-red-700">{summaryError}</p>
+                ) : null}
+              </div>
 
               {transcript.length ? (
                 <div className="mt-3 max-h-40 overflow-y-auto rounded-lg border border-[var(--line)] bg-white p-2">
@@ -168,7 +249,12 @@ export default function App() {
           </aside>
 
           <section className="fade-in-up" style={{ animationDelay: "0.2s" }}>
-            <ChatKitPanel className="w-full" />
+            <ChatKitPanel
+              className="w-full"
+              onReady={(control) => {
+                setChatComposerControl((current) => current ?? control);
+              }}
+            />
           </section>
         </div>
       </div>
